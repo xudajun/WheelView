@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -7,6 +8,12 @@
     <com.ivan.wheelview.WheelView
         android:id="@+id/wheelView"
         android:layout_width="match_parent"
-        android:layout_height="150dp" />
+        android:layout_height="150dp"
+        android:background="#FFFF00"
+        app:divideColor="#00FF00"
+        app:divideSize="0.5dp"
+        app:textColor_normal="#666666"
+        app:textColor_selected="#FF0000"
+        app:textSize="15sp" />
 
 </LinearLayout>

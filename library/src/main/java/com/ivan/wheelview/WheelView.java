@@ -1,10 +1,15 @@
 package com.ivan.wheelview;
 
 import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -60,6 +65,27 @@ public class WheelView extends ScrollView {
 
     private List<String> data;
 
+    /**
+     * 选中字体颜色
+     */
+    private int textColor_selected;
+    /**
+     * 正常字体颜色
+     */
+    private int textColor_normal;
+    /**
+     * 字体大小
+     */
+    private float textSize;
+    /**
+     * 分割线颜色
+     */
+    private int divideColor;
+    /**
+     * 分割线大小
+     */
+    private int divideSize;
+
     public WheelView(Context context) {
         this(context, null);
     }
@@ -70,10 +96,16 @@ public class WheelView extends ScrollView {
 
     public WheelView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init();
+        init(attrs);
     }
 
-    private void init() {
+    private void init(AttributeSet attrs) {
+        TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.WheelView);
+        textColor_selected = a.getColor(R.styleable.WheelView_textColor_selected, 0XFF0000);
+        textColor_normal = a.getColor(R.styleable.WheelView_textColor_normal, 0X666666);
+        textSize = a.getDimensionPixelSize(R.styleable.WheelView_textSize, 15);
+        divideColor = a.getColor(R.styleable.WheelView_divideColor, 0X00000000);
+        divideSize = a.getDimensionPixelSize(R.styleable.WheelView_divideSize, 0);
         container = new LinearLayout(getContext());
         container.setOrientation(LinearLayout.VERTICAL);
         this.addView(container);
@@ -102,12 +134,27 @@ public class WheelView extends ScrollView {
         scrollToPosition(0);
     }
 
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (divideSize == 0) {
+            return;
+        }
+        if (null == paint) {
+            paint = new Paint();
+            paint.setColor(divideColor);
+            paint.setStrokeWidth(divideSize);
+        }
+        canvas.drawLine(0, getScrollY() + header.getMeasuredHeight(), mWidth, getScrollY() + header.getMeasuredHeight(), paint);
+        canvas.drawLine(0, getScrollY() + header.getMeasuredHeight() + itemHeight, mWidth, getScrollY() + header.getMeasuredHeight() + itemHeight, paint);
+    }
+
     private TextView createItemView(int position) {
         TextView item = new TextView(getContext());
         item.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         item.setSingleLine(true);
-        item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        item.setTextColor(Color.parseColor("#666666"));
+        item.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
+        item.setTextColor(textColor_normal);
         item.setText(data.get(position));
         item.setGravity(Gravity.CENTER);
         int paddingH = dip2px(8);
@@ -146,7 +193,6 @@ public class WheelView extends ScrollView {
                         int scrollY = getScrollY();
                         int position = scrollY / itemHeight;
                         position += (scrollY % itemHeight > itemHeight / 2 ? 1 : 0);
-//                        scrollToPosition(position);
                         handler.sendEmptyMessage(position);
                     }
                 }, 100);
@@ -157,13 +203,7 @@ public class WheelView extends ScrollView {
 
     private void scrollToPosition(int position) {
         currentPosition = position;
-        int scrollY = 0;
-        for (int i = 0; i < currentPosition; i++) {
-            TextView item = (TextView) container.getChildAt(currentPosition + 1);
-            scrollY += item.getMeasuredHeight();
-        }
-//        scrollTo(0, scrollY);
-        smoothScrollTo(0, scrollY);
+        smoothScrollTo(0, currentPosition * itemHeight);
         refreshItemsState();
         if (onItemSelectListener != null) {
             onItemSelectListener.onItemSelect(currentPosition);
@@ -197,7 +237,7 @@ public class WheelView extends ScrollView {
         int scrollY = getScrollY();
         int position = scrollY / itemHeight;
         position += (scrollY % itemHeight > itemHeight / 2 ? 1 : 0);
-        int angle = 10 * (scrollY % itemHeight) / itemHeight;
+
         if (position != currentPosition) {
             currentPosition = position;
         }
@@ -205,11 +245,25 @@ public class WheelView extends ScrollView {
             if (i >= 0 && i < data.size()) {
                 TextView item = (TextView) container.getChildAt(i + 1);
                 if (i != currentPosition) {
-                    item.setTextColor(Color.parseColor("#666666"));
+                    item.setTextColor(textColor_normal);
                 } else {
-                    item.setTextColor(Color.parseColor("#FF0000"));
+                    item.setTextColor(textColor_selected);
                 }
-                item.setRotationX(20 * (currentPosition - i) - angle);
+                int angle = 30 * (i * itemHeight - scrollY) / itemHeight;
+                int divX = Math.abs(5 * (i * itemHeight - scrollY) / itemHeight);
+                if (i <= currentPosition) {
+                    item.setRotationX(-angle);
+                    int paddingHL = dip2px(8 + divX);
+                    int paddingHR = dip2px(8);
+                    int paddingV = dip2px(4);
+                    item.setPadding(paddingHL, paddingV, paddingHR, paddingV);
+                } else if (i > currentPosition) {
+                    item.setRotationX(angle);
+                    int paddingHL = dip2px(8 + divX);
+                    int paddingHR = dip2px(8);
+                    int paddingV = dip2px(4);
+                    item.setPadding(paddingHL, paddingV, paddingHR, paddingV);
+                }
             }
         }
     }
@@ -219,13 +273,56 @@ public class WheelView extends ScrollView {
             if (i >= 0 && i < data.size()) {
                 TextView item = (TextView) container.getChildAt(i + 1);
                 if (i != currentPosition) {
-                    item.setTextColor(Color.parseColor("#666666"));
+                    item.setTextColor(textColor_normal);
                 } else {
-                    item.setTextColor(Color.parseColor("#FF0000"));
+                    item.setTextColor(textColor_selected);
                 }
-                item.setRotationX(20 * (currentPosition - i));
+                int angle = 30 * (i * itemHeight - getScrollY()) / itemHeight;
+                int divX = Math.abs(5 * (i * itemHeight - getScrollY()) / itemHeight);
+                if (i <= currentPosition) {
+                    item.setRotationX(-angle);
+                    int paddingHL = dip2px(8 + divX);
+                    int paddingHR = dip2px(8);
+                    int paddingV = dip2px(4);
+                    item.setPadding(paddingHL, paddingV, paddingHR, paddingV);
+                } else if (i > currentPosition) {
+                    item.setRotationX(angle);
+                    int paddingHL = dip2px(8 + divX);
+                    int paddingHR = dip2px(8);
+                    int paddingV = dip2px(4);
+                    item.setPadding(paddingHL, paddingV, paddingHR, paddingV);
+                }
             }
         }
+    }
+
+    Paint paint;
+
+    @Override
+    public void setBackgroundDrawable(Drawable background) {
+//        if (null == paint) {
+//            paint = new Paint();
+//            paint.setColor(Color.parseColor("#83cde6"));
+//            paint.setStrokeWidth(dip2px(1f));
+//        }
+//        background = new Drawable() {
+//            @Override
+//            public void draw(Canvas canvas) {
+//                canvas.drawLine(0, header.getMeasuredHeight(), mWidth, header.getMeasuredHeight(), paint);
+//                canvas.drawLine(0, header.getMeasuredHeight() + itemHeight, mWidth, header.getMeasuredHeight() + itemHeight, paint);
+//            }
+//            @Override
+//            public void setAlpha(int alpha) {
+//            }
+//            @Override
+//            public void setColorFilter(ColorFilter cf) {
+//            }
+//            @Override
+//            public int getOpacity() {
+//                return 0;
+//            }
+//        };
+        super.setBackgroundDrawable(background);
     }
 
     public int getSelectPosition() {

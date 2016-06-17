@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="WheelView">
+        <attr name="textColor_selected" format="color" />
+        <attr name="textColor_normal" format="color" />
+        <attr name="textSize" format="dimension" />
+        <attr name="divideColor" format="color" />
+        <attr name="divideSize" format="dimension" />
+    </declare-styleable>
+</resources>
